@@ -19,7 +19,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintTop_toBottomOf="@id/tabLayout"
-        app:layout_constraintBottom_toBottomOf="parent"/>
+        app:layout_constraintBottom_toTopOf="@id/miniPlayerInclude"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerAlbums"
@@ -27,6 +27,13 @@
         android:layout_height="0dp"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/tabLayout"
+        app:layout_constraintBottom_toTopOf="@id/miniPlayerInclude"/>
+
+    <include
+        android:id="@+id/miniPlayerInclude"
+        layout="@layout/view_mini_player"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

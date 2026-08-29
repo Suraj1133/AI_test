@@ -29,12 +29,14 @@ public class MainActivity extends AppCompatActivity {
     private final List<Album> albums = new ArrayList<>();
     private final List<Song> allSongs = new ArrayList<>();
     private TabLayout tabLayout;
+    private MiniPlayerController miniPlayerController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+        miniPlayerController = new MiniPlayerController(this);
 
         loadSongs();
         loadAlbums();
@@ -69,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
 
-        requestAudioPermissionIfNeeded();
+        requestRequiredPermissions();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -87,13 +89,35 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private void requestAudioPermissionIfNeeded() {
-        String permission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    private void requestRequiredPermissions() {
+        List<String> missingPermissions = new ArrayList<>();
+        String audioPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 ? android.Manifest.permission.READ_MEDIA_AUDIO
                 : android.Manifest.permission.READ_EXTERNAL_STORAGE;
-        if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{permission}, 1);
+
+        if (checkSelfPermission(audioPermission) != PackageManager.PERMISSION_GRANTED) {
+            missingPermissions.add(audioPermission);
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            missingPermissions.add(android.Manifest.permission.POST_NOTIFICATIONS);
+        }
+        if (!missingPermissions.isEmpty()) {
+            requestPermissions(missingPermissions.toArray(new String[0]), 1);
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        miniPlayerController.connect();
+    }
+
+    @Override
+    protected void onStop() {
+        miniPlayerController.disconnect();
+        super.onStop();
     }
 
     private void loadSongs() {

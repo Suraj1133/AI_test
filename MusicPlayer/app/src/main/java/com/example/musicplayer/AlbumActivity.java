@@ -16,11 +16,13 @@ import java.util.List;
 public class AlbumActivity extends AppCompatActivity {
     private final List<Song> albumSongs = new ArrayList<>();
     private long[] albumIds;
+    private MiniPlayerController miniPlayerController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_album);
+        miniPlayerController = new MiniPlayerController(this);
 
         albumIds = getIntent().getLongArrayExtra("albumIds");
         RecyclerView recyclerView = findViewById(R.id.recyclerAlbumSongs);
@@ -33,6 +35,18 @@ public class AlbumActivity extends AppCompatActivity {
             intent.putExtra("albumIds", albumIds);
             startActivity(intent);
         }));
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        miniPlayerController.connect();
+    }
+
+    @Override
+    protected void onStop() {
+        miniPlayerController.disconnect();
+        super.onStop();
     }
 
     private void loadAlbumSongs() {
