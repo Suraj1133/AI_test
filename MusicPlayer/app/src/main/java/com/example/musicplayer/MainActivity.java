@@ -2,48 +2,33 @@ package com.example.musicplayer;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.util.Log;
+import android.view.View;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import android.database.Cursor;
-import android.provider.MediaStore;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.tabs.TabLayout;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
-import android.util.Log;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import android.media.MediaPlayer;
-import android.view.View;
-import android.widget.Button;
-import android.widget.SeekBar;
-import android.widget.TextView;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.media.MediaMetadataRetriever;
-import com.google.android.material.tabs.TabLayout;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
-
-    MediaPlayer mediaPlayer;
-    TextView currentSongTitle;
-    Button btnPlayPause, btnNext, btnPrev;
-    SeekBar songSeekBar;
-    boolean isTracking = false;
-
-    SongAdapter songAdapter;
-    List<Album> albums = new ArrayList<>();
-    int currentSongIndex = -1;
-
-    TabLayout tabLayout;
-    List<Song> allSongs = new ArrayList<>();
-    List<Song> playList = new ArrayList<>();
+    private final List<Album> albums = new ArrayList<>();
+    private final List<Song> allSongs = new ArrayList<>();
+    private TabLayout tabLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,143 +39,60 @@ public class MainActivity extends AppCompatActivity {
         loadSongs();
         loadAlbums();
 
-        currentSongTitle = findViewById(R.id.currentSongTitle);
-        btnPlayPause = findViewById(R.id.btnPlayPause);
-        btnNext = findViewById(R.id.btnNext);
-        btnPrev = findViewById(R.id.btnPrev);
-        songSeekBar = findViewById(R.id.songSeekBar);
         tabLayout = findViewById(R.id.tabLayout);
-
         tabLayout.addTab(tabLayout.newTab().setText("Songs"));
         tabLayout.addTab(tabLayout.newTab().setText("Albums"));
 
-        RecyclerView recyclerView = findViewById(R.id.recyclerSongs);
+        RecyclerView recyclerSongs = findViewById(R.id.recyclerSongs);
         RecyclerView recyclerAlbums = findViewById(R.id.recyclerAlbums);
-
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerSongs.setLayoutManager(new LinearLayoutManager(this));
         recyclerAlbums.setLayoutManager(new LinearLayoutManager(this));
 
-        AlbumAdapter albumAdapter = new AlbumAdapter(this, albums, album -> {
-            Intent intent = new Intent(MainActivity.this, AlbumActivity.class);
+        recyclerSongs.setAdapter(new SongAdapter(allSongs, song -> openPlayer(song.getPath(), null)));
+        recyclerAlbums.setAdapter(new AlbumAdapter(this, albums, album -> {
+            Intent intent = new Intent(this, AlbumActivity.class);
             intent.putExtra("albumIds", album.getAlbumIds());
             intent.putExtra("albumName", album.name);
             startActivity(intent);
-        });
-        recyclerAlbums.setAdapter(albumAdapter);
+        }));
         recyclerAlbums.setVisibility(View.GONE);
-
-        Intent intent = getIntent();
-
-        if (intent != null && intent.getBooleanExtra("playFromAlbum", false)) {
-            long[] albumIds = intent.getLongArrayExtra("albumIds");
-            String songPath = intent.getStringExtra("playSongPath");
-
-            Log.d("PLAYER", "Album IDs received: "
-                    + java.util.Arrays.toString(albumIds) + ", songPath: " + songPath);
-
-            playList.clear();
-            for (Song s : allSongs) {
-                if (containsAlbumId(albumIds, s.albumId)) {
-                    playList.add(s);
-                }
-            }
-
-            for (int i = 0; i < playList.size(); i++) {
-                if (playList.get(i).getPath().equals(songPath)) {
-                    currentSongIndex = i;
-                    break;
-                }
-            }
-        }
-
-        SongAdapter adapter = new SongAdapter(playList, song -> {
-            currentSongIndex = playList.indexOf(song);
-            playSong(song);
-        });
-
-        recyclerView.setAdapter(adapter);
-
-        btnPlayPause.setOnClickListener(v -> {
-            if (mediaPlayer != null) {
-                if (mediaPlayer.isPlaying()) {
-                    mediaPlayer.pause();
-                } else {
-                    mediaPlayer.start();
-                }
-            }
-        });
-
-        btnNext.setOnClickListener(v -> {
-            if (currentSongIndex < playList.size() - 1) {
-                currentSongIndex++;
-                playSong(playList.get(currentSongIndex));
-            }
-        });
-
-        btnPrev.setOnClickListener(v -> {
-            if (currentSongIndex > 0) {
-                currentSongIndex--;
-                playSong(playList.get(currentSongIndex));
-            }
-        });
-
-        songSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && mediaPlayer != null) {
-                    try {
-                        mediaPlayer.seekTo(progress);
-                    } catch (IllegalStateException ignored) {
-                    }
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                isTracking = false;
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                isTracking = true;
-            }
-        });
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                if (tab.getPosition() == 0) {
-                    recyclerView.setVisibility(View.VISIBLE);
-                    recyclerAlbums.setVisibility(View.GONE);
-                } else {
-                    recyclerView.setVisibility(View.GONE);
-                    recyclerAlbums.setVisibility(View.VISIBLE);
-                }
+                boolean songsSelected = tab.getPosition() == 0;
+                recyclerSongs.setVisibility(songsSelected ? View.VISIBLE : View.GONE);
+                recyclerAlbums.setVisibility(songsSelected ? View.GONE : View.VISIBLE);
             }
 
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {}
-
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {}
+            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
 
-        if (checkSelfPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                    new String[]{android.Manifest.permission.READ_MEDIA_AUDIO},
-                    1
-            );
-        }
+        requestAudioPermissionIfNeeded();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
 
-        if (currentSongIndex >= 0 && currentSongIndex < playList.size()) {
-            playSong(playList.get(currentSongIndex));
+    private void openPlayer(String songPath, long[] albumIds) {
+        Intent intent = new Intent(this, NowPlayingActivity.class);
+        intent.putExtra("playSongPath", songPath);
+        if (albumIds != null) {
+            intent.putExtra("albumIds", albumIds);
+        }
+        startActivity(intent);
+    }
+
+    private void requestAudioPermissionIfNeeded() {
+        String permission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                ? android.Manifest.permission.READ_MEDIA_AUDIO
+                : android.Manifest.permission.READ_EXTERNAL_STORAGE;
+        if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{permission}, 1);
         }
     }
 
@@ -203,15 +105,14 @@ public class MainActivity extends AppCompatActivity {
                 MediaStore.Audio.Media.ALBUM_ID
         };
 
-        Cursor cursor = getContentResolver().query(
+        try (Cursor cursor = getContentResolver().query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 MediaStore.Audio.Media.IS_MUSIC + " != 0",
                 null,
                 MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC"
-        );
-
-        if (cursor != null) {
+        )) {
+            if (cursor == null) return;
             int titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);
             int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
             int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
@@ -219,28 +120,20 @@ public class MainActivity extends AppCompatActivity {
             int albumIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID);
 
             while (cursor.moveToNext()) {
-                String title = cursor.getString(titleColumn);
-                String artist = cursor.getString(artistColumn);
-                String path = cursor.getString(pathColumn);
-                long duration = cursor.getLong(durationColumn);
-                long albumId = cursor.getLong(albumIdColumn);
-
-                allSongs.add(new Song(title, artist, path, duration, albumId));
+                allSongs.add(new Song(
+                        cursor.getString(titleColumn),
+                        cursor.getString(artistColumn),
+                        cursor.getString(pathColumn),
+                        cursor.getLong(durationColumn),
+                        cursor.getLong(albumIdColumn)
+                ));
             }
-            cursor.close();
         }
-
-        playList = new ArrayList<>(allSongs);
         Log.d("SONG", "Loaded songs: " + allSongs.size());
     }
 
-    /**
-     * Groups tracks by normalized album title + artist instead of ALBUM_ID.
-     * Some Android media scanners assign multiple IDs to one real album.
-     */
     void loadAlbums() {
         Map<String, Album> uniqueAlbums = new LinkedHashMap<>();
-
         String[] projection = {
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.ARTIST,
@@ -248,15 +141,14 @@ public class MainActivity extends AppCompatActivity {
                 MediaStore.Audio.Media.ALBUM_ID
         };
 
-        Cursor cursor = getContentResolver().query(
+        try (Cursor cursor = getContentResolver().query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 MediaStore.Audio.Media.IS_MUSIC + " != 0",
                 null,
                 MediaStore.Audio.Media.ALBUM + " COLLATE NOCASE ASC"
-        );
-
-        if (cursor != null) {
+        )) {
+            if (cursor == null) return;
             int albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM);
             int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
             int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
@@ -265,19 +157,14 @@ public class MainActivity extends AppCompatActivity {
             while (cursor.moveToNext()) {
                 String albumName = cleanMetadata(cursor.getString(albumColumn), "Unknown album");
                 String artist = cleanMetadata(cursor.getString(artistColumn), "Unknown artist");
-                String path = cursor.getString(pathColumn);
-                long albumId = cursor.getLong(albumIdColumn);
-
-                String albumKey = normalizeMetadata(albumName) + "\u0000"
-                        + normalizeMetadata(artist);
-                Album album = uniqueAlbums.get(albumKey);
+                String key = normalizeMetadata(albumName) + "\u0000" + normalizeMetadata(artist);
+                Album album = uniqueAlbums.get(key);
                 if (album == null) {
                     album = new Album(albumName, artist);
-                    uniqueAlbums.put(albumKey, album);
+                    uniqueAlbums.put(key, album);
                 }
-                album.addTrack(albumId, path);
+                album.addTrack(cursor.getLong(albumIdColumn), cursor.getString(pathColumn));
             }
-            cursor.close();
         }
 
         albums.clear();
@@ -294,96 +181,5 @@ public class MainActivity extends AppCompatActivity {
 
     private String normalizeMetadata(String value) {
         return cleanMetadata(value, "").toLowerCase(Locale.ROOT);
-    }
-
-    private boolean containsAlbumId(long[] albumIds, long albumId) {
-        if (albumIds == null) {
-            return false;
-        }
-        for (long id : albumIds) {
-            if (id == albumId) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    void playSong(Song song) {
-        try {
-            isTracking = false;
-
-            if (mediaPlayer != null) {
-                if (mediaPlayer.isPlaying()) {
-                    mediaPlayer.stop();
-                }
-                mediaPlayer.release();
-                mediaPlayer = null;
-            }
-
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource(song.getPath());
-            mediaPlayer.prepare();
-            mediaPlayer.start();
-
-            currentSongTitle.setText(song.getTitle());
-            songSeekBar.setMax(mediaPlayer.getDuration());
-            songSeekBar.setProgress(0);
-            isTracking = true;
-
-            new Thread(() -> {
-                while (isTracking && mediaPlayer != null) {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-
-                    try {
-                        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                            runOnUiThread(() -> {
-                                if (!songSeekBar.isPressed() && mediaPlayer != null) {
-                                    try {
-                                        songSeekBar.setProgress(mediaPlayer.getCurrentPosition());
-                                    } catch (IllegalStateException ignored) {
-                                    }
-                                }
-                            });
-                        }
-                    } catch (IllegalStateException e) {
-                        break;
-                    }
-                }
-            }).start();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    Bitmap getAlbumArt(String path) {
-        try {
-            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-            retriever.setDataSource(path);
-            byte[] art = retriever.getEmbeddedPicture();
-            retriever.release();
-
-            if (art != null) {
-                return BitmapFactory.decodeByteArray(art, 0, art.length);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    protected void onDestroy() {
-        isTracking = false;
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-        super.onDestroy();
     }
 }
