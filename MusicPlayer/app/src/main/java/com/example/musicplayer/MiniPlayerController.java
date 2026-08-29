@@ -38,7 +38,8 @@ public class MiniPlayerController {
 
     public MiniPlayerController(Activity activity) {
         this.activity = activity;
-        bar = activity.findViewById(R.id.miniPlayerBar);
+        // An id set on <include> replaces the included layout root id.
+        bar = activity.findViewById(R.id.miniPlayerInclude);
         artwork = activity.findViewById(R.id.miniPlayerArtwork);
         title = activity.findViewById(R.id.miniPlayerTitle);
         artist = activity.findViewById(R.id.miniPlayerArtist);
