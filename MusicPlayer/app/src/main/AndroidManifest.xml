@@ -19,6 +19,7 @@
                 <action android:name="androidx.media3.session.MediaSessionService"/>
             </intent-filter>
         </service>
+        <activity android:name=".QueueActivity" />
         <activity android:name=".NowPlayingActivity" />
         <activity android:name=".AlbumActivity" />
         <activity

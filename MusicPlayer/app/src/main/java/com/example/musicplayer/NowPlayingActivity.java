@@ -1,6 +1,7 @@
 package com.example.musicplayer;
 
 import android.content.ComponentName;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -14,6 +15,7 @@ import android.widget.Toast;
 import androidx.core.content.ContextCompat;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
+import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
 import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
@@ -27,6 +29,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity {
+    private static final float[] SPEEDS = {0.75f, 1f, 1.25f, 1.5f, 2f};
+
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService queueExecutor = Executors.newSingleThreadExecutor();
 
@@ -37,6 +41,9 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
     private TextView totalTime;
     private SeekBar seekBar;
     private Button playPauseButton;
+    private Button shuffleButton;
+    private Button repeatButton;
+    private Button speedButton;
     private boolean userSeeking;
     private ListenableFuture<MediaController> controllerFuture;
     private MediaController controller;
@@ -47,6 +54,11 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
         @Override public void onIsPlayingChanged(boolean isPlaying) { refreshPlayerUi(); }
         @Override public void onPlaybackStateChanged(int state) { refreshPlayerUi(); }
         @Override public void onMediaItemTransition(MediaItem item, int reason) { refreshPlayerUi(); }
+        @Override public void onShuffleModeEnabledChanged(boolean enabled) { refreshPlayerUi(); }
+        @Override public void onRepeatModeChanged(int repeatMode) { refreshPlayerUi(); }
+        @Override public void onPlaybackParametersChanged(PlaybackParameters parameters) {
+            refreshPlayerUi();
+        }
     };
 
     private final Runnable updateProgress = new Runnable() {
@@ -76,6 +88,10 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
         Button previousButton = findViewById(R.id.nowPlayingPrevious);
         playPauseButton = findViewById(R.id.nowPlayingPlayPause);
         Button nextButton = findViewById(R.id.nowPlayingNext);
+        shuffleButton = findViewById(R.id.nowPlayingShuffle);
+        repeatButton = findViewById(R.id.nowPlayingRepeat);
+        speedButton = findViewById(R.id.nowPlayingSpeed);
+        Button queueButton = findViewById(R.id.nowPlayingQueue);
 
         previousButton.setOnClickListener(v -> playPrevious());
         nextButton.setOnClickListener(v -> {
@@ -87,6 +103,15 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
             if (controller == null) return;
             if (controller.isPlaying()) controller.pause(); else controller.play();
         });
+        shuffleButton.setOnClickListener(v -> {
+            if (controller != null) {
+                controller.setShuffleModeEnabled(!controller.getShuffleModeEnabled());
+            }
+        });
+        repeatButton.setOnClickListener(v -> cycleRepeatMode());
+        speedButton.setOnClickListener(v -> cyclePlaybackSpeed());
+        queueButton.setOnClickListener(v ->
+                startActivity(new Intent(this, QueueActivity.class)));
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
@@ -182,6 +207,31 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
+    private void cycleRepeatMode() {
+        if (controller == null) return;
+        int current = controller.getRepeatMode();
+        if (current == Player.REPEAT_MODE_OFF) {
+            controller.setRepeatMode(Player.REPEAT_MODE_ALL);
+        } else if (current == Player.REPEAT_MODE_ALL) {
+            controller.setRepeatMode(Player.REPEAT_MODE_ONE);
+        } else {
+            controller.setRepeatMode(Player.REPEAT_MODE_OFF);
+        }
+    }
+
+    private void cyclePlaybackSpeed() {
+        if (controller == null) return;
+        float current = controller.getPlaybackParameters().speed;
+        int nextIndex = 0;
+        for (int i = 0; i < SPEEDS.length; i++) {
+            if (Math.abs(current - SPEEDS[i]) < 0.01f) {
+                nextIndex = (i + 1) % SPEEDS.length;
+                break;
+            }
+        }
+        controller.setPlaybackSpeed(SPEEDS[nextIndex]);
+    }
+
     private void refreshPlayerUi() {
         if (controller == null || controller.getMediaItemCount() == 0) return;
 
@@ -189,6 +239,14 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
         songTitle.setText(metadata.title == null ? "Unknown soundtrack" : metadata.title);
         songArtist.setText(metadata.artist == null ? "Unknown artist" : metadata.artist);
         playPauseButton.setText(controller.isPlaying() ? "Ⅱ" : "▶");
+        shuffleButton.setText(controller.getShuffleModeEnabled() ? "Shuffle On" : "Shuffle");
+
+        int repeatMode = controller.getRepeatMode();
+        repeatButton.setText(repeatMode == Player.REPEAT_MODE_ONE
+                ? "Repeat 1"
+                : repeatMode == Player.REPEAT_MODE_ALL ? "Repeat All" : "Repeat Off");
+        speedButton.setText(String.format(
+                Locale.getDefault(), "%.2g×", controller.getPlaybackParameters().speed));
 
         long duration = controller.getDuration();
         if (duration > 0) {
