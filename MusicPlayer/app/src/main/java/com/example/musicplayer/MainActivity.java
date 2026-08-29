@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import android.util.Log;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -71,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
 
         AlbumAdapter albumAdapter = new AlbumAdapter(this, albums, album -> {
             Intent intent = new Intent(MainActivity.this, AlbumActivity.class);
-            intent.putExtra("albumId", album.albumId);
+            intent.putExtra("albumIds", album.getAlbumIds());
             intent.putExtra("albumName", album.name);
             startActivity(intent);
         });
@@ -81,14 +82,15 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = getIntent();
 
         if (intent != null && intent.getBooleanExtra("playFromAlbum", false)) {
-            long albumId = intent.getLongExtra("albumId", -1);
+            long[] albumIds = intent.getLongArrayExtra("albumIds");
             String songPath = intent.getStringExtra("playSongPath");
 
-            Log.d("PLAYER", "AlbumId received: " + albumId + ", songPath: " + songPath);
+            Log.d("PLAYER", "Album IDs received: "
+                    + java.util.Arrays.toString(albumIds) + ", songPath: " + songPath);
 
             playList.clear();
             for (Song s : allSongs) {
-                if (s.albumId == albumId) {
+                if (containsAlbumId(albumIds, s.albumId)) {
                     playList.add(s);
                 }
             }
@@ -233,58 +235,77 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Builds the album list from the same music-track dataset used by the Songs tab.
-     * This avoids relying on MediaStore.Audio.Albums rows, which can contain
-     * duplicate metadata records or omit an album for an otherwise indexed track.
+     * Groups tracks by normalized album title + artist instead of ALBUM_ID.
+     * Some Android media scanners assign multiple IDs to one real album.
      */
     void loadAlbums() {
-        Map<Long, Album> uniqueAlbums = new LinkedHashMap<>();
+        Map<String, Album> uniqueAlbums = new LinkedHashMap<>();
 
-        for (Song song : allSongs) {
-            if (song.albumId < 0 || uniqueAlbums.containsKey(song.albumId)) {
-                continue;
-            }
+        String[] projection = {
+                MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.DATA,
+                MediaStore.Audio.Media.ALBUM_ID
+        };
 
-            String albumName = "Unknown album";
-            String artist = song.getArtist();
-            String albumArt = null;
+        Cursor cursor = getContentResolver().query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                MediaStore.Audio.Media.IS_MUSIC + " != 0",
+                null,
+                MediaStore.Audio.Media.ALBUM + " COLLATE NOCASE ASC"
+        );
 
-            Cursor cursor = getContentResolver().query(
-                    MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                    new String[]{
-                            MediaStore.Audio.Albums.ALBUM,
-                            MediaStore.Audio.Albums.ARTIST,
-                            MediaStore.Audio.Albums.ALBUM_ART
-                    },
-                    MediaStore.Audio.Albums._ID + "=?",
-                    new String[]{String.valueOf(song.albumId)},
-                    null
-            );
+        if (cursor != null) {
+            int albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM);
+            int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
+            int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
+            int albumIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID);
 
-            if (cursor != null) {
-                if (cursor.moveToFirst()) {
-                    albumName = cursor.getString(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM));
-                    String albumArtist = cursor.getString(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST));
-                    if (albumArtist != null && !albumArtist.trim().isEmpty()) {
-                        artist = albumArtist;
-                    }
-                    albumArt = cursor.getString(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM_ART));
+            while (cursor.moveToNext()) {
+                String albumName = cleanMetadata(cursor.getString(albumColumn), "Unknown album");
+                String artist = cleanMetadata(cursor.getString(artistColumn), "Unknown artist");
+                String path = cursor.getString(pathColumn);
+                long albumId = cursor.getLong(albumIdColumn);
+
+                String albumKey = normalizeMetadata(albumName) + "\u0000"
+                        + normalizeMetadata(artist);
+                Album album = uniqueAlbums.get(albumKey);
+                if (album == null) {
+                    album = new Album(albumName, artist);
+                    uniqueAlbums.put(albumKey, album);
                 }
-                cursor.close();
+                album.addTrack(albumId, path);
             }
-
-            uniqueAlbums.put(
-                    song.albumId,
-                    new Album(albumName, artist, String.valueOf(song.albumId), albumArt)
-            );
+            cursor.close();
         }
 
         albums.clear();
         albums.addAll(uniqueAlbums.values());
-        Log.d("ALBUM", "Loaded unique albums: " + albums.size());
+        Log.d("ALBUM", "Loaded merged albums: " + albums.size());
+    }
+
+    private String cleanMetadata(String value, String fallback) {
+        if (value == null || value.trim().isEmpty() || "<unknown>".equalsIgnoreCase(value.trim())) {
+            return fallback;
+        }
+        return value.trim().replaceAll("\\s+", " ");
+    }
+
+    private String normalizeMetadata(String value) {
+        return cleanMetadata(value, "").toLowerCase(Locale.ROOT);
+    }
+
+    private boolean containsAlbumId(long[] albumIds, long albumId) {
+        if (albumIds == null) {
+            return false;
+        }
+        for (long id : albumIds) {
+            if (id == albumId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void playSong(Song song) {
