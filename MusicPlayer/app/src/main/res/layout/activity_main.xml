@@ -5,14 +5,46 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <LinearLayout
+        android:id="@+id/libraryToolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="8dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <EditText
+            android:id="@+id/librarySearch"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@android:drawable/edit_text"
+            android:hint="Search songs, artists or albums"
+            android:imeOptions="actionDone"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingHorizontal="14dp"/>
+
+        <ImageButton
+            android:id="@+id/librarySort"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Sort library"
+            android:src="@android:drawable/ic_menu_sort_by_size"
+            app:tint="#6C4AB6"/>
+    </LinearLayout>
+
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/libraryToolbar"
         app:tabIndicatorColor="#6C4AB6"
         app:tabIndicatorHeight="3dp"
-        app:tabSelectedTextColor="#6C4AB6"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:tabSelectedTextColor="#6C4AB6"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerSongs"
@@ -29,11 +61,18 @@
         app:layout_constraintTop_toBottomOf="@id/tabLayout"
         app:layout_constraintBottom_toTopOf="@id/miniPlayerInclude"/>
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerFolders"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/tabLayout"
+        app:layout_constraintBottom_toTopOf="@id/miniPlayerInclude"/>
+
     <include
         android:id="@+id/miniPlayerInclude"
         layout="@layout/view_mini_player"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"/>
-
 </androidx.constraintlayout.widget.ConstraintLayout>

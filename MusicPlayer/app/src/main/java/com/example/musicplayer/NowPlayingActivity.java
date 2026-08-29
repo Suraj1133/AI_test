@@ -138,7 +138,12 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
 
                 String selectedUri = getIntent().getStringExtra("playSongUri");
                 if (selectedUri != null) {
-                    prepareQueue(selectedUri, getIntent().getLongArrayExtra("albumIds"));
+                    prepareQueue(
+                            selectedUri,
+                            getIntent().getLongArrayExtra("albumIds"),
+                            getIntent().getBooleanExtra("fromFolder", false),
+                            getIntent().getStringExtra("folderPath")
+                    );
                 } else {
                     refreshPlayerUi();
                 }
@@ -150,12 +155,18 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
         }, ContextCompat.getMainExecutor(this));
     }
 
-    private void prepareQueue(String selectedUri, long[] albumIds) {
+    private void prepareQueue(
+            String selectedUri, long[] albumIds, boolean fromFolder, String folderPath) {
         queueExecutor.execute(() -> {
             try {
-                List<Song> queue = albumIds == null
-                        ? repository.getAllSongs()
-                        : repository.getSongsForAlbums(albumIds);
+                List<Song> queue;
+                if (albumIds != null) {
+                    queue = repository.getSongsForAlbums(albumIds);
+                } else if (fromFolder) {
+                    queue = repository.getSongsForFolder(folderPath);
+                } else {
+                    queue = repository.getAllSongs();
+                }
                 List<MediaItem> mediaItems = new ArrayList<>();
                 int selectedIndex = -1;
 
@@ -194,6 +205,8 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
         }
 
         controller.setMediaItems(mediaItems, selectedIndex, 0);
+        controller.setShuffleModeEnabled(
+                getIntent().getBooleanExtra("startShuffled", false));
         controller.prepare();
         controller.play();
     }

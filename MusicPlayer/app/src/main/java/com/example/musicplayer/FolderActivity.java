@@ -7,7 +7,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -17,84 +16,82 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class AlbumActivity extends AppCompatActivity {
-    private final List<Song> albumSongs = new ArrayList<>();
+public class FolderActivity extends androidx.appcompat.app.AppCompatActivity {
+    private final List<Song> songs = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    private long[] albumIds;
+    private String folderPath;
     private SongAdapter adapter;
     private MusicRepository repository;
     private MiniPlayerController miniPlayerController;
     private ImageView artwork;
-    private TextView trackCount;
+    private TextView count;
     private Button playButton;
     private Button shuffleButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_album);
+        setContentView(R.layout.activity_folder);
 
+        folderPath = getIntent().getStringExtra("folderPath");
         repository = new MusicRepository(getContentResolver());
         miniPlayerController = new MiniPlayerController(this);
-        albumIds = getIntent().getLongArrayExtra("albumIds");
+        ((TextView) findViewById(R.id.folderDetailName)).setText(
+                getIntent().getStringExtra("folderName"));
+        artwork = findViewById(R.id.folderDetailArtwork);
+        count = findViewById(R.id.folderDetailCount);
+        playButton = findViewById(R.id.folderDetailPlay);
+        shuffleButton = findViewById(R.id.folderDetailShuffle);
 
-        artwork = findViewById(R.id.albumDetailArtwork);
-        trackCount = findViewById(R.id.albumDetailCount);
-        playButton = findViewById(R.id.albumDetailPlay);
-        shuffleButton = findViewById(R.id.albumDetailShuffle);
-        ((TextView) findViewById(R.id.albumDetailName)).setText(
-                getIntent().getStringExtra("albumName"));
-        ((TextView) findViewById(R.id.albumDetailArtist)).setText(
-                getIntent().getStringExtra("albumArtist"));
-
-        RecyclerView recyclerView = findViewById(R.id.recyclerAlbumSongs);
+        RecyclerView recyclerView = findViewById(R.id.recyclerFolderSongs);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new SongAdapter(albumSongs, song -> playSong(song, false));
+        adapter = new SongAdapter(songs, song -> playSong(song, false));
         recyclerView.setAdapter(adapter);
 
         playButton.setEnabled(false);
         shuffleButton.setEnabled(false);
         playButton.setOnClickListener(v -> playFirst(false));
         shuffleButton.setOnClickListener(v -> playFirst(true));
-        loadAlbumSongs();
+        loadSongs();
     }
 
-    private void loadAlbumSongs() {
+    private void loadSongs() {
         executor.execute(() -> {
             try {
-                List<Song> songs = repository.getSongsForAlbums(albumIds);
+                List<Song> loaded = repository.getSongsForFolder(folderPath);
                 runOnUiThread(() -> {
                     if (isDestroyed()) return;
-                    albumSongs.clear();
-                    albumSongs.addAll(songs);
+                    songs.clear();
+                    songs.addAll(loaded);
                     adapter.notifyDataSetChanged();
-                    trackCount.setText(String.format(
-                            Locale.getDefault(), "%d tracks", songs.size()));
-                    boolean hasSongs = !songs.isEmpty();
+                    count.setText(String.format(
+                            Locale.getDefault(), "%d tracks", loaded.size()));
+                    boolean hasSongs = !loaded.isEmpty();
                     playButton.setEnabled(hasSongs);
                     shuffleButton.setEnabled(hasSongs);
                     if (hasSongs) {
                         ArtworkLoader.loadInto(
-                                this, artwork, songs.get(0).getContentUri());
+                                this, artwork, loaded.get(0).getContentUri());
                     }
                 });
             } catch (SecurityException exception) {
                 runOnUiThread(() -> Toast.makeText(
-                        this, "Unable to access this album",
+                        this, "Unable to access this folder",
                         Toast.LENGTH_LONG).show());
             }
         });
     }
 
     private void playFirst(boolean shuffled) {
-        if (!albumSongs.isEmpty()) playSong(albumSongs.get(0), shuffled);
+        if (!songs.isEmpty()) playSong(songs.get(0), shuffled);
     }
 
     private void playSong(Song song, boolean shuffled) {
         Intent intent = new Intent(this, NowPlayingActivity.class);
         intent.putExtra("playSongUri", song.getContentUri().toString());
-        intent.putExtra("albumIds", albumIds);
+        intent.putExtra("fromFolder", true);
+        intent.putExtra("folderPath", folderPath);
         intent.putExtra("startShuffled", shuffled);
         startActivity(intent);
     }

@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
+import java.util.Locale;
 
 public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> {
     private final List<Album> albums;
@@ -47,17 +48,13 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> 
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Album album = albums.get(position);
         holder.albumName.setText(album.name);
-        holder.albumArtist.setText(album.artist);
+        holder.albumArtist.setText(String.format(Locale.getDefault(), "%s • %d tracks",
+                album.artist, album.getTrackCount()));
         ArtworkLoader.loadFirstInto(context, holder.albumCover, album.songUris);
         holder.itemView.setOnClickListener(v -> listener.onAlbumClick(album));
     }
 
-    @Override
-    public int getItemCount() {
-        return albums.size();
-    }
+    @Override public int getItemCount() { return albums.size(); }
 
-    public interface OnAlbumClickListener {
-        void onAlbumClick(Album album);
-    }
+    public interface OnAlbumClickListener { void onAlbumClick(Album album); }
 }

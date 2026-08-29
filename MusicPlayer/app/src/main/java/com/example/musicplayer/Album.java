@@ -17,19 +17,16 @@ public final class Album {
     }
 
     void addTrack(long albumId, Uri songUri) {
-        if (!albumIds.contains(albumId)) {
-            albumIds.add(albumId);
-        }
-        if (songUri != null) {
-            songUris.add(songUri);
-        }
+        if (!albumIds.contains(albumId)) albumIds.add(albumId);
+        if (songUri != null) songUris.add(songUri);
     }
 
     long[] getAlbumIds() {
         long[] ids = new long[albumIds.size()];
-        for (int i = 0; i < albumIds.size(); i++) {
-            ids[i] = albumIds.get(i);
-        }
+        for (int i = 0; i < albumIds.size(); i++) ids[i] = albumIds.get(i);
         return ids;
     }
+
+    int getTrackCount() { return songUris.size(); }
+    Uri getArtworkUri() { return songUris.isEmpty() ? null : songUris.get(0); }
 }
