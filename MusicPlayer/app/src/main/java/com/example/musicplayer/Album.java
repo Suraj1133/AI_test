@@ -1,25 +1,27 @@
 package com.example.musicplayer;
 
+import android.net.Uri;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class Album {
-    String name;
-    String artist;
+public final class Album {
+    final String name;
+    final String artist;
     final List<Long> albumIds = new ArrayList<>();
-    final List<String> songPaths = new ArrayList<>();
+    final List<Uri> songUris = new ArrayList<>();
 
     public Album(String name, String artist) {
         this.name = name;
         this.artist = artist;
     }
 
-    void addTrack(long albumId, String songPath) {
+    void addTrack(long albumId, Uri songUri) {
         if (!albumIds.contains(albumId)) {
             albumIds.add(albumId);
         }
-        if (songPath != null && !songPath.isEmpty()) {
-            songPaths.add(songPath);
+        if (songUri != null) {
+            songUris.add(songUri);
         }
     }
 

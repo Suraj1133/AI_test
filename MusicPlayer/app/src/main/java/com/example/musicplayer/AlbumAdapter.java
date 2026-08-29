@@ -1,15 +1,13 @@
 package com.example.musicplayer;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.media.MediaMetadataRetriever;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
@@ -38,46 +36,20 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> 
         }
     }
 
+    @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_album, parent, false);
-        return new ViewHolder(view);
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new ViewHolder(LayoutInflater.from(context)
+                .inflate(R.layout.item_album, parent, false));
     }
 
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Album album = albums.get(position);
         holder.albumName.setText(album.name);
         holder.albumArtist.setText(album.artist);
-
-        holder.albumCover.setImageResource(android.R.drawable.ic_menu_gallery);
-        Bitmap artwork = getFirstEmbeddedArtwork(album.songPaths);
-        if (artwork != null) {
-            holder.albumCover.setImageBitmap(artwork);
-        }
-
+        ArtworkLoader.loadFirstInto(context, holder.albumCover, album.songUris);
         holder.itemView.setOnClickListener(v -> listener.onAlbumClick(album));
-    }
-
-    private Bitmap getFirstEmbeddedArtwork(List<String> songPaths) {
-        for (String path : songPaths) {
-            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-            try {
-                retriever.setDataSource(path);
-                byte[] art = retriever.getEmbeddedPicture();
-                if (art != null) {
-                    return BitmapFactory.decodeByteArray(art, 0, art.length);
-                }
-            } catch (Exception ignored) {
-                // Some tracks in one album may not contain embedded artwork.
-            } finally {
-                try {
-                    retriever.release();
-                } catch (Exception ignored) {
-                }
-            }
-        }
-        return null;
     }
 
     @Override

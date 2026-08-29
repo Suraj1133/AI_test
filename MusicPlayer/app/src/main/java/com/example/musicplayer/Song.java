@@ -1,35 +1,32 @@
 package com.example.musicplayer;
 
-public class Song {
+import android.net.Uri;
 
-    private String title;
-    private String artist;
-    private String path;
-    private long duration;
+public final class Song {
+    private final long mediaId;
+    private final String title;
+    private final String artist;
+    private final Uri contentUri;
+    private final long duration;
+    private final long albumId;
+    private final int trackNumber;
 
-    public long albumId;
-
-    public Song(String title, String artist, String path, long duration,long albumId) {
+    public Song(long mediaId, String title, String artist, Uri contentUri,
+                long duration, long albumId, int trackNumber) {
+        this.mediaId = mediaId;
         this.title = title;
         this.artist = artist;
-        this.path = path;
+        this.contentUri = contentUri;
         this.duration = duration;
         this.albumId = albumId;
+        this.trackNumber = trackNumber;
     }
 
-    public String getTitle() {
-        return title;
-    }
-
-    public String getArtist() {
-        return artist;
-    }
-
-    public String getPath() {
-        return path;
-    }
-
-    public long getDuration() {
-        return duration;
-    }
+    public long getMediaId() { return mediaId; }
+    public String getTitle() { return title; }
+    public String getArtist() { return artist; }
+    public Uri getContentUri() { return contentUri; }
+    public long getDuration() { return duration; }
+    public long getAlbumId() { return albumId; }
+    public int getTrackNumber() { return trackNumber; }
 }

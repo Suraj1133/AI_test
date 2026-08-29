@@ -3,13 +3,14 @@ package com.example.musicplayer;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
+import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
 import androidx.media3.session.MediaController;
@@ -31,14 +32,11 @@ public class MiniPlayerController {
         @Override public void onMediaMetadataChanged(MediaMetadata metadata) { refresh(); }
         @Override public void onIsPlayingChanged(boolean isPlaying) { refresh(); }
         @Override public void onPlaybackStateChanged(int state) { refresh(); }
-        @Override public void onMediaItemTransition(androidx.media3.common.MediaItem item, int reason) {
-            refresh();
-        }
+        @Override public void onMediaItemTransition(MediaItem item, int reason) { refresh(); }
     };
 
     public MiniPlayerController(Activity activity) {
         this.activity = activity;
-        // An id set on <include> replaces the included layout root id.
         bar = activity.findViewById(R.id.miniPlayerInclude);
         artwork = activity.findViewById(R.id.miniPlayerArtwork);
         title = activity.findViewById(R.id.miniPlayerTitle);
@@ -100,9 +98,9 @@ public class MiniPlayerController {
                 ? android.R.drawable.ic_media_pause
                 : android.R.drawable.ic_media_play);
 
-        if (metadata.artworkData != null) {
-            artwork.setImageBitmap(BitmapFactory.decodeByteArray(
-                    metadata.artworkData, 0, metadata.artworkData.length));
+        MediaItem item = controller.getCurrentMediaItem();
+        if (item != null && !item.mediaId.isEmpty()) {
+            ArtworkLoader.loadInto(activity, artwork, Uri.parse(item.mediaId));
         } else {
             artwork.setImageResource(R.drawable.player_art_placeholder);
         }

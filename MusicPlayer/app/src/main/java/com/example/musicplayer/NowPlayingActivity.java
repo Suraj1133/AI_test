@@ -1,13 +1,10 @@
 package com.example.musicplayer;
 
 import android.content.ComponentName;
-import android.database.Cursor;
-import android.graphics.BitmapFactory;
-import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.MediaStore;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -26,10 +23,12 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity {
-    private final List<Song> queue = new ArrayList<>();
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService queueExecutor = Executors.newSingleThreadExecutor();
 
     private ImageView albumArtwork;
     private TextView songTitle;
@@ -41,6 +40,7 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
     private boolean userSeeking;
     private ListenableFuture<MediaController> controllerFuture;
     private MediaController controller;
+    private MusicRepository repository;
 
     private final Player.Listener playerListener = new Player.Listener() {
         @Override public void onMediaMetadataChanged(MediaMetadata metadata) { refreshPlayerUi(); }
@@ -65,6 +65,7 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_now_playing);
+        repository = new MusicRepository(getContentResolver());
 
         albumArtwork = findViewById(R.id.nowPlayingArtwork);
         songTitle = findViewById(R.id.nowPlayingTitle);
@@ -110,18 +111,12 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
                 controller = controllerFuture.get();
                 controller.addListener(playerListener);
 
-                String selectedPath = getIntent().getStringExtra("playSongPath");
-                if (selectedPath != null) {
-                    loadQueue(getIntent().getLongArrayExtra("albumIds"));
-                    int selectedIndex = findSongIndex(selectedPath);
-                    if (selectedIndex >= 0) {
-                        startQueue(selectedIndex);
-                    } else {
-                        Toast.makeText(this, "Unable to find this soundtrack",
-                                Toast.LENGTH_SHORT).show();
-                    }
+                String selectedUri = getIntent().getStringExtra("playSongUri");
+                if (selectedUri != null) {
+                    prepareQueue(selectedUri, getIntent().getLongArrayExtra("albumIds"));
+                } else {
+                    refreshPlayerUi();
                 }
-                refreshPlayerUi();
                 progressHandler.post(updateProgress);
             } catch (Exception exception) {
                 Toast.makeText(this, "Unable to connect to the player",
@@ -130,84 +125,52 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
         }, ContextCompat.getMainExecutor(this));
     }
 
-    private void startQueue(int selectedIndex) {
-        List<MediaItem> mediaItems = new ArrayList<>();
-        for (Song song : queue) {
-            byte[] artwork = getArtwork(song.getPath());
-            MediaMetadata.Builder metadata = new MediaMetadata.Builder()
-                    .setTitle(song.getTitle())
-                    .setArtist(song.getArtist());
-            if (artwork != null) {
-                metadata.setArtworkData(artwork, MediaMetadata.PICTURE_TYPE_FRONT_COVER);
+    private void prepareQueue(String selectedUri, long[] albumIds) {
+        queueExecutor.execute(() -> {
+            try {
+                List<Song> queue = albumIds == null
+                        ? repository.getAllSongs()
+                        : repository.getSongsForAlbums(albumIds);
+                List<MediaItem> mediaItems = new ArrayList<>();
+                int selectedIndex = -1;
+
+                for (int i = 0; i < queue.size(); i++) {
+                    Song song = queue.get(i);
+                    String uri = song.getContentUri().toString();
+                    if (selectedUri.equals(uri)) selectedIndex = i;
+
+                    MediaMetadata metadata = new MediaMetadata.Builder()
+                            .setTitle(song.getTitle())
+                            .setArtist(song.getArtist())
+                            .build();
+                    mediaItems.add(new MediaItem.Builder()
+                            .setMediaId(uri)
+                            .setUri(song.getContentUri())
+                            .setMediaMetadata(metadata)
+                            .build());
+                }
+
+                int startIndex = selectedIndex;
+                runOnUiThread(() -> startQueue(mediaItems, startIndex));
+            } catch (SecurityException exception) {
+                runOnUiThread(() -> Toast.makeText(
+                        this, "Audio permission is required for playback",
+                        Toast.LENGTH_LONG).show());
             }
-            mediaItems.add(new MediaItem.Builder()
-                    .setMediaId(song.getPath())
-                    .setUri(song.getPath())
-                    .setMediaMetadata(metadata.build())
-                    .build());
+        });
+    }
+
+    private void startQueue(List<MediaItem> mediaItems, int selectedIndex) {
+        if (controller == null || isDestroyed()) return;
+        if (selectedIndex < 0 || mediaItems.isEmpty()) {
+            Toast.makeText(this, "Unable to find this soundtrack",
+                    Toast.LENGTH_SHORT).show();
+            return;
         }
 
         controller.setMediaItems(mediaItems, selectedIndex, 0);
         controller.prepare();
         controller.play();
-    }
-
-    private void loadQueue(long[] albumIds) {
-        queue.clear();
-        String[] projection = {
-                MediaStore.Audio.Media.TITLE,
-                MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.DATA,
-                MediaStore.Audio.Media.DURATION,
-                MediaStore.Audio.Media.ALBUM_ID
-        };
-
-        String selection = MediaStore.Audio.Media.IS_MUSIC + " != 0";
-        String[] selectionArgs = null;
-        String sortOrder = MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC";
-
-        if (albumIds != null && albumIds.length > 0) {
-            StringBuilder placeholders = new StringBuilder();
-            selectionArgs = new String[albumIds.length];
-            for (int i = 0; i < albumIds.length; i++) {
-                if (i > 0) placeholders.append(",");
-                placeholders.append("?");
-                selectionArgs[i] = String.valueOf(albumIds[i]);
-            }
-            selection += " AND " + MediaStore.Audio.Media.ALBUM_ID
-                    + " IN (" + placeholders + ")";
-            sortOrder = MediaStore.Audio.Media.TRACK + " ASC, "
-                    + MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC";
-        }
-
-        try (Cursor cursor = getContentResolver().query(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                projection, selection, selectionArgs, sortOrder
-        )) {
-            if (cursor == null) return;
-            int titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);
-            int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
-            int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
-            int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
-            int albumIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID);
-
-            while (cursor.moveToNext()) {
-                queue.add(new Song(
-                        cursor.getString(titleColumn),
-                        cursor.getString(artistColumn),
-                        cursor.getString(pathColumn),
-                        cursor.getLong(durationColumn),
-                        cursor.getLong(albumIdColumn)
-                ));
-            }
-        }
-    }
-
-    private int findSongIndex(String path) {
-        for (int i = 0; i < queue.size(); i++) {
-            if (path.equals(queue.get(i).getPath())) return i;
-        }
-        return -1;
     }
 
     private void playPrevious() {
@@ -233,23 +196,11 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
             totalTime.setText(formatTime(duration));
         }
 
-        if (metadata.artworkData != null) {
-            albumArtwork.setImageBitmap(BitmapFactory.decodeByteArray(
-                    metadata.artworkData, 0, metadata.artworkData.length));
+        MediaItem item = controller.getCurrentMediaItem();
+        if (item != null && !item.mediaId.isEmpty()) {
+            ArtworkLoader.loadInto(this, albumArtwork, Uri.parse(item.mediaId));
         } else {
             albumArtwork.setImageResource(R.drawable.player_art_placeholder);
-        }
-    }
-
-    private byte[] getArtwork(String path) {
-        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-        try {
-            retriever.setDataSource(path);
-            return retriever.getEmbeddedPicture();
-        } catch (Exception ignored) {
-            return null;
-        } finally {
-            try { retriever.release(); } catch (Exception ignored) {}
         }
     }
 
@@ -267,6 +218,7 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
     @Override
     protected void onDestroy() {
         progressHandler.removeCallbacks(updateProgress);
+        queueExecutor.shutdownNow();
         if (controller != null) {
             controller.removeListener(playerListener);
             controller = null;

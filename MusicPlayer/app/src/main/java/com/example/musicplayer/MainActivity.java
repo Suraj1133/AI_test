@@ -2,14 +2,13 @@ package com.example.musicplayer;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.MediaStore;
-import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -20,28 +19,33 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.tabs.TabLayout;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int PERMISSION_REQUEST = 100;
+
     private final List<Album> albums = new ArrayList<>();
     private final List<Song> allSongs = new ArrayList<>();
-    private TabLayout tabLayout;
+    private final ExecutorService libraryExecutor = Executors.newSingleThreadExecutor();
+
+    private MusicRepository repository;
+    private SongAdapter songAdapter;
+    private AlbumAdapter albumAdapter;
     private MiniPlayerController miniPlayerController;
+    private boolean libraryLoaded;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        repository = new MusicRepository(getContentResolver());
         miniPlayerController = new MiniPlayerController(this);
 
-        loadSongs();
-        loadAlbums();
-
-        tabLayout = findViewById(R.id.tabLayout);
+        TabLayout tabLayout = findViewById(R.id.tabLayout);
         tabLayout.addTab(tabLayout.newTab().setText("Songs"));
         tabLayout.addTab(tabLayout.newTab().setText("Albums"));
 
@@ -50,13 +54,15 @@ public class MainActivity extends AppCompatActivity {
         recyclerSongs.setLayoutManager(new LinearLayoutManager(this));
         recyclerAlbums.setLayoutManager(new LinearLayoutManager(this));
 
-        recyclerSongs.setAdapter(new SongAdapter(allSongs, song -> openPlayer(song.getPath(), null)));
-        recyclerAlbums.setAdapter(new AlbumAdapter(this, albums, album -> {
+        songAdapter = new SongAdapter(allSongs, song -> openPlayer(song.getContentUri().toString()));
+        albumAdapter = new AlbumAdapter(this, albums, album -> {
             Intent intent = new Intent(this, AlbumActivity.class);
             intent.putExtra("albumIds", album.getAlbumIds());
             intent.putExtra("albumName", album.name);
             startActivity(intent);
-        }));
+        });
+        recyclerSongs.setAdapter(songAdapter);
+        recyclerAlbums.setAdapter(albumAdapter);
         recyclerAlbums.setVisibility(View.GONE);
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -66,45 +72,97 @@ public class MainActivity extends AppCompatActivity {
                 recyclerSongs.setVisibility(songsSelected ? View.VISIBLE : View.GONE);
                 recyclerAlbums.setVisibility(songsSelected ? View.GONE : View.VISIBLE);
             }
-
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
 
-        requestRequiredPermissions();
-
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
             return insets;
         });
+
+        if (hasAudioPermission()) {
+            loadLibrary();
+            requestNotificationPermissionIfNeeded();
+        } else {
+            requestRequiredPermissions();
+        }
     }
 
-    private void openPlayer(String songPath, long[] albumIds) {
+    private void openPlayer(String songUri) {
         Intent intent = new Intent(this, NowPlayingActivity.class);
-        intent.putExtra("playSongPath", songPath);
-        if (albumIds != null) {
-            intent.putExtra("albumIds", albumIds);
-        }
+        intent.putExtra("playSongUri", songUri);
         startActivity(intent);
     }
 
-    private void requestRequiredPermissions() {
-        List<String> missingPermissions = new ArrayList<>();
-        String audioPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    private boolean hasAudioPermission() {
+        String permission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 ? android.Manifest.permission.READ_MEDIA_AUDIO
                 : android.Manifest.permission.READ_EXTERNAL_STORAGE;
+        return checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED;
+    }
 
-        if (checkSelfPermission(audioPermission) != PackageManager.PERMISSION_GRANTED) {
-            missingPermissions.add(audioPermission);
+    private void requestRequiredPermissions() {
+        List<String> permissions = new ArrayList<>();
+        permissions.add(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                ? android.Manifest.permission.READ_MEDIA_AUDIO
+                : android.Manifest.permission.READ_EXTERNAL_STORAGE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(android.Manifest.permission.POST_NOTIFICATIONS);
         }
+        requestPermissions(permissions.toArray(new String[0]), PERMISSION_REQUEST);
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
-            missingPermissions.add(android.Manifest.permission.POST_NOTIFICATIONS);
+            requestPermissions(
+                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                    PERMISSION_REQUEST
+            );
         }
-        if (!missingPermissions.isEmpty()) {
-            requestPermissions(missingPermissions.toArray(new String[0]), 1);
+    }
+
+    private void loadLibrary() {
+        if (libraryLoaded) return;
+        libraryLoaded = true;
+
+        libraryExecutor.execute(() -> {
+            try {
+                List<Song> songs = repository.getAllSongs();
+                List<Album> loadedAlbums = repository.getAlbums();
+                runOnUiThread(() -> {
+                    if (isDestroyed()) return;
+                    allSongs.clear();
+                    allSongs.addAll(songs);
+                    albums.clear();
+                    albums.addAll(loadedAlbums);
+                    songAdapter.notifyDataSetChanged();
+                    albumAdapter.notifyDataSetChanged();
+                });
+            } catch (SecurityException exception) {
+                libraryLoaded = false;
+                runOnUiThread(() -> Toast.makeText(
+                        this, "Audio permission is required to load music",
+                        Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST) {
+            if (hasAudioPermission()) {
+                loadLibrary();
+            } else {
+                Toast.makeText(this,
+                        "Allow audio access to display your music library",
+                        Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -120,90 +178,9 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
     }
 
-    private void loadSongs() {
-        String[] projection = {
-                MediaStore.Audio.Media.TITLE,
-                MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.DATA,
-                MediaStore.Audio.Media.DURATION,
-                MediaStore.Audio.Media.ALBUM_ID
-        };
-
-        try (Cursor cursor = getContentResolver().query(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                MediaStore.Audio.Media.IS_MUSIC + " != 0",
-                null,
-                MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC"
-        )) {
-            if (cursor == null) return;
-            int titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);
-            int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
-            int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
-            int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
-            int albumIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID);
-
-            while (cursor.moveToNext()) {
-                allSongs.add(new Song(
-                        cursor.getString(titleColumn),
-                        cursor.getString(artistColumn),
-                        cursor.getString(pathColumn),
-                        cursor.getLong(durationColumn),
-                        cursor.getLong(albumIdColumn)
-                ));
-            }
-        }
-        Log.d("SONG", "Loaded songs: " + allSongs.size());
-    }
-
-    void loadAlbums() {
-        Map<String, Album> uniqueAlbums = new LinkedHashMap<>();
-        String[] projection = {
-                MediaStore.Audio.Media.ALBUM,
-                MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.DATA,
-                MediaStore.Audio.Media.ALBUM_ID
-        };
-
-        try (Cursor cursor = getContentResolver().query(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                MediaStore.Audio.Media.IS_MUSIC + " != 0",
-                null,
-                MediaStore.Audio.Media.ALBUM + " COLLATE NOCASE ASC"
-        )) {
-            if (cursor == null) return;
-            int albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM);
-            int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
-            int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
-            int albumIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID);
-
-            while (cursor.moveToNext()) {
-                String albumName = cleanMetadata(cursor.getString(albumColumn), "Unknown album");
-                String artist = cleanMetadata(cursor.getString(artistColumn), "Unknown artist");
-                String key = normalizeMetadata(albumName) + "\u0000" + normalizeMetadata(artist);
-                Album album = uniqueAlbums.get(key);
-                if (album == null) {
-                    album = new Album(albumName, artist);
-                    uniqueAlbums.put(key, album);
-                }
-                album.addTrack(cursor.getLong(albumIdColumn), cursor.getString(pathColumn));
-            }
-        }
-
-        albums.clear();
-        albums.addAll(uniqueAlbums.values());
-        Log.d("ALBUM", "Loaded merged albums: " + albums.size());
-    }
-
-    private String cleanMetadata(String value, String fallback) {
-        if (value == null || value.trim().isEmpty() || "<unknown>".equalsIgnoreCase(value.trim())) {
-            return fallback;
-        }
-        return value.trim().replaceAll("\\s+", " ");
-    }
-
-    private String normalizeMetadata(String value) {
-        return cleanMetadata(value, "").toLowerCase(Locale.ROOT);
+    @Override
+    protected void onDestroy() {
+        libraryExecutor.shutdownNow();
+        super.onDestroy();
     }
 }
