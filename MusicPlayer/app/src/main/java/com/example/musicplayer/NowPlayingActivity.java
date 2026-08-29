@@ -29,7 +29,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity {
-    private static final float[] SPEEDS = {0.75f, 1f, 1.25f, 1.5f, 2f};
+    private static final float[] SPEEDS = {
+            0.75f, 1f, 1.1f, 1.2f, 1.3f, 1.4f,
+            1.5f, 1.6f, 1.7f, 1.8f, 1.9f, 2f
+    };
 
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService queueExecutor = Executors.newSingleThreadExecutor();
