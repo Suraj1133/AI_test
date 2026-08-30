@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="nowPlayingGradientStart" format="color"/>
+    <attr name="nowPlayingGradientCenter" format="color"/>
+    <attr name="nowPlayingGradientEnd" format="color"/>
+</resources>
