@@ -272,13 +272,39 @@ public class MainActivity extends BaseActivity {
     }
 
     private void showThemeDialog() {
+        String[] settings = {"Light or dark mode", "Accent color"};
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.appearance)
+                .setItems(settings, (dialog, which) -> {
+                    if (which == 0) showBrightnessDialog();
+                    else showColorDialog();
+                })
+                .show();
+    }
+
+    private void showBrightnessDialog() {
         String[] choices = {"Use system setting", "Light", "Dark"};
         int current = ThemeManager.getSavedTheme(this);
         new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.appearance)
+                .setTitle("Light or dark mode")
                 .setSingleChoiceItems(choices, current, (dialog, which) -> {
                     dialog.dismiss();
                     ThemeManager.setTheme(this, which);
+                })
+                .show();
+    }
+
+    private void showColorDialog() {
+        String[] choices = {"Lavender", "Ocean", "Emerald", "Sunset", "Rose"};
+        int current = ThemeManager.getSavedColor(this);
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Accent color")
+                .setSingleChoiceItems(choices, current, (dialog, which) -> {
+                    dialog.dismiss();
+                    if (which != current) {
+                        ThemeManager.setColor(this, which);
+                        recreate();
+                    }
                 })
                 .show();
     }
