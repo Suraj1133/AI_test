@@ -1,12 +1,46 @@
 <resources>
     <style name="Base.Theme.MusicPlayer" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/brand_primary</item>
-        <item name="colorSecondary">@color/brand_secondary</item>
-        <item name="android:colorAccent">@color/brand_primary</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">@color/surface_light</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowDisablePreview">false</item>
     </style>
-    <style name="Theme.MusicPlayer" parent="Base.Theme.MusicPlayer"/>
+
+    <style name="Theme.MusicPlayer.Lavender" parent="Base.Theme.MusicPlayer">
+        <item name="colorPrimary">#6C4AB6</item>
+        <item name="colorSecondary">#8D6BC7</item>
+        <item name="colorPrimaryContainer">#EADDFF</item>
+        <item name="colorOnPrimaryContainer">#24005A</item>
+        <item name="android:colorAccent">#6C4AB6</item>
+    </style>
+    <style name="Theme.MusicPlayer.Ocean" parent="Base.Theme.MusicPlayer">
+        <item name="colorPrimary">#0061A4</item>
+        <item name="colorSecondary">#4F616E</item>
+        <item name="colorPrimaryContainer">#D1E4FF</item>
+        <item name="colorOnPrimaryContainer">#001D36</item>
+        <item name="android:colorAccent">#0061A4</item>
+    </style>
+    <style name="Theme.MusicPlayer.Emerald" parent="Base.Theme.MusicPlayer">
+        <item name="colorPrimary">#006C4C</item>
+        <item name="colorSecondary">#4D6357</item>
+        <item name="colorPrimaryContainer">#89F8C7</item>
+        <item name="colorOnPrimaryContainer">#002114</item>
+        <item name="android:colorAccent">#006C4C</item>
+    </style>
+    <style name="Theme.MusicPlayer.Sunset" parent="Base.Theme.MusicPlayer">
+        <item name="colorPrimary">#9C4146</item>
+        <item name="colorSecondary">#765657</item>
+        <item name="colorPrimaryContainer">#FFDADB</item>
+        <item name="colorOnPrimaryContainer">#40000A</item>
+        <item name="android:colorAccent">#9C4146</item>
+    </style>
+    <style name="Theme.MusicPlayer.Rose" parent="Base.Theme.MusicPlayer">
+        <item name="colorPrimary">#8E495E</item>
+        <item name="colorSecondary">#74565E</item>
+        <item name="colorPrimaryContainer">#FFD9E2</item>
+        <item name="colorOnPrimaryContainer">#3A071B</item>
+        <item name="android:colorAccent">#8E495E</item>
+    </style>
+
+    <style name="Theme.MusicPlayer" parent="Theme.MusicPlayer.Lavender"/>
 </resources>
