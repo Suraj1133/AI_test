@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class PlaylistsActivity extends androidx.appcompat.app.AppCompatActivity {
+public class PlaylistsActivity extends BaseActivity {
     private final List<PlaylistEntity> playlists = new ArrayList<>();
     private final List<String> names = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
