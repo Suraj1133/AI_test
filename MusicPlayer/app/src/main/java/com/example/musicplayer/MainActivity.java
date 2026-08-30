@@ -34,7 +34,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
     private static final int PERMISSION_REQUEST = 100;
 
     private final List<Song> sourceSongs = new ArrayList<>();
