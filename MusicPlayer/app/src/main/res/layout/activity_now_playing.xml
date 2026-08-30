@@ -101,6 +101,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/nowPlayingPrevious"
+                android:contentDescription="Previous soundtrack"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="72dp"
                 android:layout_height="64dp"
@@ -110,6 +111,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/nowPlayingPlayPause"
+                android:contentDescription="Play or pause"
                 android:layout_width="76dp"
                 android:layout_height="76dp"
                 android:layout_marginHorizontal="16dp"
@@ -121,6 +123,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/nowPlayingNext"
+                android:contentDescription="Next soundtrack"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="72dp"
                 android:layout_height="64dp"

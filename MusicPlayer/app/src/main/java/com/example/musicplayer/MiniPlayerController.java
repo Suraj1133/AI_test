@@ -1,6 +1,8 @@
 package com.example.musicplayer;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.os.Build;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.net.Uri;
@@ -86,11 +88,32 @@ public class MiniPlayerController {
 
     private void refresh() {
         if (controller == null || controller.getMediaItemCount() == 0) {
+            bar.animate().cancel();
+            bar.setAlpha(1f);
+            bar.setTranslationY(0f);
             bar.setVisibility(View.GONE);
             return;
         }
 
-        bar.setVisibility(View.VISIBLE);
+        if (bar.getVisibility() != View.VISIBLE) {
+            bar.setVisibility(View.VISIBLE);
+            boolean animationsEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.O
+                    || ValueAnimator.areAnimatorsEnabled();
+            if (animationsEnabled) {
+                float distance = 16f
+                        * activity.getResources().getDisplayMetrics().density;
+                bar.setAlpha(0f);
+                bar.setTranslationY(distance);
+                bar.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .setDuration(160)
+                        .start();
+            } else {
+                bar.setAlpha(1f);
+                bar.setTranslationY(0f);
+            }
+        }
         MediaMetadata metadata = controller.getMediaMetadata();
         title.setText(metadata.title == null ? "Unknown soundtrack" : metadata.title);
         artist.setText(metadata.artist == null ? "Unknown artist" : metadata.artist);

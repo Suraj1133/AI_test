@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="brand_primary">#6C4AB6</color>
+    <color name="brand_primary_dark">#B79BFF</color>
+    <color name="brand_secondary">#8D6BC7</color>
+    <color name="surface_light">#FFF9FF</color>
+    <color name="surface_dark">#17121F</color>
+    <color name="mini_player_surface">#302047</color>
+    <color name="mini_player_text">#FFFFFF</color>
+    <color name="mini_player_secondary">#D2C5E5</color>
+    <color name="text_secondary_light">#66616B</color>
+    <color name="text_secondary_dark">#C8C1CC</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

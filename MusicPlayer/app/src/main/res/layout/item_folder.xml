@@ -34,7 +34,7 @@
             android:id="@+id/folderDetails"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#666666"
+            android:textColor="?android:attr/textColorSecondary"
             android:textSize="14sp"/>
     </LinearLayout>
 </LinearLayout>

@@ -1,3 +1,10 @@
 <resources>
-    <string name="app_name">MusicPlayer</string>
+    <string name="app_name">Music Player</string>
+    <string name="search_songs">Search songs, artists or albums</string>
+    <string name="search_albums">Search albums or artists</string>
+    <string name="search_folders">Search folders</string>
+    <string name="sort_library">Sort library</string>
+    <string name="appearance">Appearance</string>
+    <string name="no_music_found">No matching music found</string>
+    <string name="loading_library">Loading your music…</string>
 </resources>

@@ -10,6 +10,10 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -47,6 +51,9 @@ public class MainActivity extends AppCompatActivity {
     private FolderAdapter folderAdapter;
     private MiniPlayerController miniPlayerController;
     private EditText searchInput;
+    private ProgressBar libraryProgress;
+    private TextView libraryEmpty;
+    private boolean libraryLoading;
     private int selectedTab;
     private int songSort;
     private int albumSort;
@@ -63,6 +70,9 @@ public class MainActivity extends AppCompatActivity {
         miniPlayerController = new MiniPlayerController(this);
         searchInput = findViewById(R.id.librarySearch);
         ImageButton sortButton = findViewById(R.id.librarySort);
+        ImageButton themeButton = findViewById(R.id.libraryTheme);
+        libraryProgress = findViewById(R.id.libraryProgress);
+        libraryEmpty = findViewById(R.id.libraryEmpty);
         View libraryToolbar = findViewById(R.id.libraryToolbar);
         View personalPanel = findViewById(R.id.personalPanel);
 
@@ -78,6 +88,9 @@ public class MainActivity extends AppCompatActivity {
         recyclerSongs.setLayoutManager(new LinearLayoutManager(this));
         recyclerAlbums.setLayoutManager(new LinearLayoutManager(this));
         recyclerFolders.setLayoutManager(new LinearLayoutManager(this));
+        recyclerSongs.setItemAnimator(null);
+        recyclerAlbums.setItemAnimator(null);
+        recyclerFolders.setItemAnimator(null);
 
         songAdapter = new SongAdapter(
                 visibleSongs,
@@ -113,6 +126,7 @@ public class MainActivity extends AppCompatActivity {
                 personalPanel.setVisibility(selectedTab == 3 ? View.VISIBLE : View.GONE);
                 libraryToolbar.setVisibility(selectedTab == 3 ? View.GONE : View.VISIBLE);
                 updateSearchHint();
+                updateEmptyState();
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
             @Override public void onTabReselected(TabLayout.Tab tab) {}
@@ -126,6 +140,7 @@ public class MainActivity extends AppCompatActivity {
             @Override public void afterTextChanged(Editable s) {}
         });
         sortButton.setOnClickListener(this::showSortMenu);
+        themeButton.setOnClickListener(v -> showThemeDialog());
         findViewById(R.id.personalFavorites).setOnClickListener(v ->
                 openPersonalCollection(PersonalLibraryRepository.FAVORITES, "Favorites"));
         findViewById(R.id.personalRecent).setOnClickListener(v ->
@@ -150,8 +165,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateSearchHint() {
-        searchInput.setHint(selectedTab == 0 ? "Search songs, artists or albums"
-                : selectedTab == 1 ? "Search albums or artists" : "Search folders");
+        searchInput.setHint(selectedTab == 0 ? R.string.search_songs
+                : selectedTab == 1 ? R.string.search_albums : R.string.search_folders);
     }
 
     private void showSortMenu(View anchor) {
@@ -243,6 +258,29 @@ public class MainActivity extends AppCompatActivity {
         songAdapter.notifyDataSetChanged();
         albumAdapter.notifyDataSetChanged();
         folderAdapter.notifyDataSetChanged();
+        updateEmptyState();
+    }
+
+    private void updateEmptyState() {
+        if (selectedTab == 3 || libraryLoading) {
+            libraryEmpty.setVisibility(View.GONE);
+            return;
+        }
+        boolean empty = selectedTab == 0 ? visibleSongs.isEmpty()
+                : selectedTab == 1 ? visibleAlbums.isEmpty() : visibleFolders.isEmpty();
+        libraryEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+    }
+
+    private void showThemeDialog() {
+        String[] choices = {"Use system setting", "Light", "Dark"};
+        int current = ThemeManager.getSavedTheme(this);
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.appearance)
+                .setSingleChoiceItems(choices, current, (dialog, which) -> {
+                    dialog.dismiss();
+                    ThemeManager.setTheme(this, which);
+                })
+                .show();
     }
 
     private void openPersonalCollection(String type, String title) {
@@ -288,6 +326,9 @@ public class MainActivity extends AppCompatActivity {
     private void loadLibrary() {
         if (libraryLoaded) return;
         libraryLoaded = true;
+        libraryLoading = true;
+        libraryProgress.setVisibility(View.VISIBLE);
+        libraryEmpty.setVisibility(View.GONE);
         libraryExecutor.execute(() -> {
             try {
                 List<Song> songs = repository.getAllSongs();
@@ -301,13 +342,19 @@ public class MainActivity extends AppCompatActivity {
                     sourceAlbums.addAll(albums);
                     sourceFolders.clear();
                     sourceFolders.addAll(folders);
+                    libraryLoading = false;
+                    libraryProgress.setVisibility(View.GONE);
                     applyFiltersAndSort();
                 });
             } catch (SecurityException exception) {
                 libraryLoaded = false;
-                runOnUiThread(() -> Toast.makeText(this,
+                libraryLoading = false;
+                runOnUiThread(() -> {
+                    libraryProgress.setVisibility(View.GONE);
+                    Toast.makeText(this,
                         "Audio permission is required to load music",
-                        Toast.LENGTH_LONG).show());
+                        Toast.LENGTH_LONG).show();
+                });
             }
         });
     }
