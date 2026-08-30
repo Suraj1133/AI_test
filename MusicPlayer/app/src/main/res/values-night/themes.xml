@@ -7,26 +7,41 @@
     </style>
 
     <style name="Theme.MusicPlayer.Lavender" parent="Base.Theme.MusicPlayer">
+        <item name="nowPlayingGradientStart">#170F26</item>
+        <item name="nowPlayingGradientCenter">#38235A</item>
+        <item name="nowPlayingGradientEnd">#6C4AB6</item>
         <item name="colorPrimary">#D0BCFF</item><item name="colorSecondary">#CCC2DC</item>
         <item name="colorPrimaryContainer">#4F378B</item><item name="colorOnPrimaryContainer">#EADDFF</item>
         <item name="android:colorAccent">#D0BCFF</item>
     </style>
     <style name="Theme.MusicPlayer.Ocean" parent="Base.Theme.MusicPlayer">
+        <item name="nowPlayingGradientStart">#091923</item>
+        <item name="nowPlayingGradientCenter">#153B55</item>
+        <item name="nowPlayingGradientEnd">#0061A4</item>
         <item name="colorPrimary">#9ECAFF</item><item name="colorSecondary">#B7C9D8</item>
         <item name="colorPrimaryContainer">#00497D</item><item name="colorOnPrimaryContainer">#D1E4FF</item>
         <item name="android:colorAccent">#9ECAFF</item>
     </style>
     <style name="Theme.MusicPlayer.Emerald" parent="Base.Theme.MusicPlayer">
+        <item name="nowPlayingGradientStart">#091B15</item>
+        <item name="nowPlayingGradientCenter">#164936</item>
+        <item name="nowPlayingGradientEnd">#006C4C</item>
         <item name="colorPrimary">#6EDBAF</item><item name="colorSecondary">#B4CCBF</item>
         <item name="colorPrimaryContainer">#00513A</item><item name="colorOnPrimaryContainer">#89F8C7</item>
         <item name="android:colorAccent">#6EDBAF</item>
     </style>
     <style name="Theme.MusicPlayer.Sunset" parent="Base.Theme.MusicPlayer">
+        <item name="nowPlayingGradientStart">#211112</item>
+        <item name="nowPlayingGradientCenter">#57282B</item>
+        <item name="nowPlayingGradientEnd">#9C4146</item>
         <item name="colorPrimary">#FFB3B5</item><item name="colorSecondary">#E6BDBD</item>
         <item name="colorPrimaryContainer">#7E2A30</item><item name="colorOnPrimaryContainer">#FFDADB</item>
         <item name="android:colorAccent">#FFB3B5</item>
     </style>
     <style name="Theme.MusicPlayer.Rose" parent="Base.Theme.MusicPlayer">
+        <item name="nowPlayingGradientStart">#201117</item>
+        <item name="nowPlayingGradientCenter">#512838</item>
+        <item name="nowPlayingGradientEnd">#8E495E</item>
         <item name="colorPrimary">#FFB1C5</item><item name="colorSecondary">#E3BDC6</item>
         <item name="colorPrimaryContainer">#713247</item><item name="colorOnPrimaryContainer">#FFD9E2</item>
         <item name="android:colorAccent">#FFB1C5</item>
