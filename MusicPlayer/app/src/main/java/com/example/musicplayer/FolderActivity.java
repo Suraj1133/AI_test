@@ -16,7 +16,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class FolderActivity extends androidx.appcompat.app.AppCompatActivity {
+public class FolderActivity extends BaseActivity {
     private final List<Song> songs = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
