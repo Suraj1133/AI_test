@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class AlbumActivity extends AppCompatActivity {
+public class AlbumActivity extends BaseActivity {
     private final List<Song> albumSongs = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
