@@ -1,5 +1,7 @@
 package com.example.musicplayer;
 
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Handler;
@@ -13,6 +15,7 @@ import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.session.DefaultMediaNotificationProvider;
 import androidx.media3.session.MediaSession;
 import androidx.media3.session.MediaSessionService;
 
@@ -88,7 +91,23 @@ public class PlaybackService extends MediaSessionService {
                 .setAudioAttributes(audioAttributes, true)
                 .build();
         player.addListener(stateListener);
-        mediaSession = new MediaSession.Builder(this, player).build();
+
+        Intent nowPlayingIntent = new Intent(this, NowPlayingActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent sessionActivity = PendingIntent.getActivity(
+                this,
+                0,
+                nowPlayingIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        mediaSession = new MediaSession.Builder(this, player)
+                .setSessionActivity(sessionActivity)
+                .build();
+        setMediaNotificationProvider(
+                new DefaultMediaNotificationProvider.Builder(this)
+                        .setSmallIcon(R.drawable.ic_notification_music)
+                        .build()
+        );
 
         restorePlaybackState();
         stateHandler.post(periodicSave);
