@@ -103,11 +103,10 @@ public class PlaybackService extends MediaSessionService {
         mediaSession = new MediaSession.Builder(this, player)
                 .setSessionActivity(sessionActivity)
                 .build();
-        setMediaNotificationProvider(
-                new DefaultMediaNotificationProvider.Builder(this)
-                        .setSmallIcon(R.drawable.ic_notification_music)
-                        .build()
-        );
+        DefaultMediaNotificationProvider notificationProvider =
+                new DefaultMediaNotificationProvider.Builder(this).build();
+        notificationProvider.setSmallIcon(R.drawable.ic_notification_music);
+        setMediaNotificationProvider(notificationProvider);
 
         restorePlaybackState();
         stateHandler.post(periodicSave);
