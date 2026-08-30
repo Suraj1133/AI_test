@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class PersonalCollectionActivity extends androidx.appcompat.app.AppCompatActivity {
+public class PersonalCollectionActivity extends BaseActivity {
     private final List<Song> songs = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
