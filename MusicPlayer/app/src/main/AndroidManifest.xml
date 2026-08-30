@@ -24,7 +24,9 @@
         <activity android:name=".PlaylistsActivity" />
         <activity android:name=".FolderActivity" />
         <activity android:name=".QueueActivity" />
-        <activity android:name=".NowPlayingActivity" />
+        <activity
+            android:name=".NowPlayingActivity"
+            android:launchMode="singleTop" />
         <activity android:name=".AlbumActivity" />
         <activity
             android:name=".MainActivity"
