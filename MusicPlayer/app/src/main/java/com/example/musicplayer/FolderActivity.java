@@ -46,7 +46,11 @@ public class FolderActivity extends androidx.appcompat.app.AppCompatActivity {
 
         RecyclerView recyclerView = findViewById(R.id.recyclerFolderSongs);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new SongAdapter(songs, song -> playSong(song, false));
+        adapter = new SongAdapter(
+                songs,
+                song -> playSong(song, false),
+                song -> SongActions.show(this, song)
+        );
         recyclerView.setAdapter(adapter);
 
         playButton.setEnabled(false);

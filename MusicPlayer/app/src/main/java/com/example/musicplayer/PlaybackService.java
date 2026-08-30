@@ -21,6 +21,8 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class PlaybackService extends MediaSessionService {
     private static final String PREFS = "playback_state";
@@ -32,8 +34,19 @@ public class PlaybackService extends MediaSessionService {
     private static final String KEY_SPEED = "speed";
 
     private final Handler stateHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService historyExecutor = Executors.newSingleThreadExecutor();
     private MediaSession mediaSession;
     private ExoPlayer player;
+    private PersonalLibraryRepository personalRepository;
+    private boolean recordedCurrentItem;
+
+    private final Runnable recordPlay = () -> {
+        if (player == null || !player.isPlaying() || recordedCurrentItem) return;
+        MediaItem item = player.getCurrentMediaItem();
+        if (item == null) return;
+        recordedCurrentItem = true;
+        historyExecutor.execute(() -> personalRepository.recordPlayed(item));
+    };
 
     private final Runnable periodicSave = new Runnable() {
         @Override
@@ -48,6 +61,18 @@ public class PlaybackService extends MediaSessionService {
         public void onEvents(Player player, Player.Events events) {
             savePlaybackState();
         }
+
+        @Override
+        public void onMediaItemTransition(MediaItem item, int reason) {
+            recordedCurrentItem = false;
+            schedulePlayRecording();
+        }
+
+        @Override
+        public void onIsPlayingChanged(boolean isPlaying) {
+            if (isPlaying) schedulePlayRecording();
+            else stateHandler.removeCallbacks(recordPlay);
+        }
     };
 
     @Override
@@ -58,6 +83,7 @@ public class PlaybackService extends MediaSessionService {
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .build();
 
+        personalRepository = new PersonalLibraryRepository(this);
         player = new ExoPlayer.Builder(this)
                 .setAudioAttributes(audioAttributes, true)
                 .build();
@@ -66,6 +92,13 @@ public class PlaybackService extends MediaSessionService {
 
         restorePlaybackState();
         stateHandler.post(periodicSave);
+    }
+
+    private void schedulePlayRecording() {
+        stateHandler.removeCallbacks(recordPlay);
+        if (player != null && player.isPlaying() && !recordedCurrentItem) {
+            stateHandler.postDelayed(recordPlay, 30000);
+        }
     }
 
     @Nullable
@@ -144,7 +177,9 @@ public class PlaybackService extends MediaSessionService {
     @Override
     public void onDestroy() {
         stateHandler.removeCallbacks(periodicSave);
+        stateHandler.removeCallbacks(recordPlay);
         savePlaybackState();
+        historyExecutor.shutdown();
         if (mediaSession != null) {
             player.removeListener(stateListener);
             player.release();

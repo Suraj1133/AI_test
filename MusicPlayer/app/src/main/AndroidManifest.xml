@@ -19,6 +19,8 @@
                 <action android:name="androidx.media3.session.MediaSessionService"/>
             </intent-filter>
         </service>
+        <activity android:name=".PersonalCollectionActivity" />
+        <activity android:name=".PlaylistsActivity" />
         <activity android:name=".FolderActivity" />
         <activity android:name=".QueueActivity" />
         <activity android:name=".NowPlayingActivity" />

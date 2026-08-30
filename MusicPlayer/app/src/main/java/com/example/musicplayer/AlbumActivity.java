@@ -50,7 +50,11 @@ public class AlbumActivity extends AppCompatActivity {
 
         RecyclerView recyclerView = findViewById(R.id.recyclerAlbumSongs);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new SongAdapter(albumSongs, song -> playSong(song, false));
+        adapter = new SongAdapter(
+                albumSongs,
+                song -> playSong(song, false),
+                song -> SongActions.show(this, song)
+        );
         recyclerView.setAdapter(adapter);
 
         playButton.setEnabled(false);

@@ -145,7 +145,9 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
                             selectedUri,
                             getIntent().getLongArrayExtra("albumIds"),
                             getIntent().getBooleanExtra("fromFolder", false),
-                            getIntent().getStringExtra("folderPath")
+                            getIntent().getStringExtra("folderPath"),
+                            getIntent().getStringExtra("personalCollection"),
+                            getIntent().getLongExtra("playlistId", -1)
                     );
                 } else {
                     refreshPlayerUi();
@@ -159,11 +161,15 @@ public class NowPlayingActivity extends androidx.appcompat.app.AppCompatActivity
     }
 
     private void prepareQueue(
-            String selectedUri, long[] albumIds, boolean fromFolder, String folderPath) {
+            String selectedUri, long[] albumIds, boolean fromFolder, String folderPath,
+            String personalCollection, long playlistId) {
         queueExecutor.execute(() -> {
             try {
                 List<Song> queue;
-                if (albumIds != null) {
+                if (personalCollection != null) {
+                    queue = new PersonalLibraryRepository(this)
+                            .getCollection(personalCollection, playlistId);
+                } else if (albumIds != null) {
                     queue = repository.getSongsForAlbums(albumIds);
                 } else if (fromFolder) {
                     queue = repository.getSongsForFolder(folderPath);

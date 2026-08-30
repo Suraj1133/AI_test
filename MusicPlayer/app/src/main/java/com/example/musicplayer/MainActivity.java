@@ -63,11 +63,14 @@ public class MainActivity extends AppCompatActivity {
         miniPlayerController = new MiniPlayerController(this);
         searchInput = findViewById(R.id.librarySearch);
         ImageButton sortButton = findViewById(R.id.librarySort);
+        View libraryToolbar = findViewById(R.id.libraryToolbar);
+        View personalPanel = findViewById(R.id.personalPanel);
 
         TabLayout tabLayout = findViewById(R.id.tabLayout);
         tabLayout.addTab(tabLayout.newTab().setText("Songs"));
         tabLayout.addTab(tabLayout.newTab().setText("Albums"));
         tabLayout.addTab(tabLayout.newTab().setText("Folders"));
+        tabLayout.addTab(tabLayout.newTab().setText("Personal"));
 
         RecyclerView recyclerSongs = findViewById(R.id.recyclerSongs);
         RecyclerView recyclerAlbums = findViewById(R.id.recyclerAlbums);
@@ -76,8 +79,11 @@ public class MainActivity extends AppCompatActivity {
         recyclerAlbums.setLayoutManager(new LinearLayoutManager(this));
         recyclerFolders.setLayoutManager(new LinearLayoutManager(this));
 
-        songAdapter = new SongAdapter(visibleSongs,
-                song -> openPlayer(song.getContentUri().toString()));
+        songAdapter = new SongAdapter(
+                visibleSongs,
+                song -> openPlayer(song.getContentUri().toString()),
+                song -> SongActions.show(this, song)
+        );
         albumAdapter = new AlbumAdapter(this, visibleAlbums, album -> {
             Intent intent = new Intent(this, AlbumActivity.class);
             intent.putExtra("albumIds", album.getAlbumIds());
@@ -104,6 +110,8 @@ public class MainActivity extends AppCompatActivity {
                 recyclerSongs.setVisibility(selectedTab == 0 ? View.VISIBLE : View.GONE);
                 recyclerAlbums.setVisibility(selectedTab == 1 ? View.VISIBLE : View.GONE);
                 recyclerFolders.setVisibility(selectedTab == 2 ? View.VISIBLE : View.GONE);
+                personalPanel.setVisibility(selectedTab == 3 ? View.VISIBLE : View.GONE);
+                libraryToolbar.setVisibility(selectedTab == 3 ? View.GONE : View.VISIBLE);
                 updateSearchHint();
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
@@ -118,6 +126,14 @@ public class MainActivity extends AppCompatActivity {
             @Override public void afterTextChanged(Editable s) {}
         });
         sortButton.setOnClickListener(this::showSortMenu);
+        findViewById(R.id.personalFavorites).setOnClickListener(v ->
+                openPersonalCollection(PersonalLibraryRepository.FAVORITES, "Favorites"));
+        findViewById(R.id.personalRecent).setOnClickListener(v ->
+                openPersonalCollection(PersonalLibraryRepository.RECENT, "Recently played"));
+        findViewById(R.id.personalMostPlayed).setOnClickListener(v ->
+                openPersonalCollection(PersonalLibraryRepository.MOST_PLAYED, "Most played"));
+        findViewById(R.id.personalPlaylists).setOnClickListener(v ->
+                startActivity(new Intent(this, PlaylistsActivity.class)));
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -227,6 +243,13 @@ public class MainActivity extends AppCompatActivity {
         songAdapter.notifyDataSetChanged();
         albumAdapter.notifyDataSetChanged();
         folderAdapter.notifyDataSetChanged();
+    }
+
+    private void openPersonalCollection(String type, String title) {
+        Intent intent = new Intent(this, PersonalCollectionActivity.class);
+        intent.putExtra("collectionType", type);
+        intent.putExtra("collectionTitle", title);
+        startActivity(intent);
     }
 
     private void openPlayer(String songUri) {
