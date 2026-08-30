@@ -17,7 +17,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.List;
 
-public class QueueActivity extends androidx.appcompat.app.AppCompatActivity {
+public class QueueActivity extends BaseActivity {
     private QueueAdapter adapter;
     private ListenableFuture<MediaController> controllerFuture;
     private MediaController controller;
