@@ -9,7 +9,7 @@
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
     android:visibility="gone"
-    app:cardBackgroundColor="@color/mini_player_surface"
+    app:cardBackgroundColor="?attr/colorPrimaryContainer"
     app:cardCornerRadius="18dp"
     app:cardElevation="8dp">
 
@@ -41,7 +41,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/mini_player_text"
+                android:textColor="?attr/colorOnPrimaryContainer"
                 android:textSize="15sp"
                 android:textStyle="bold"/>
 
@@ -51,7 +51,8 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/mini_player_secondary"
+                android:textColor="?attr/colorOnPrimaryContainer"
+                android:alpha="0.78"
                 android:textSize="12sp"/>
         </LinearLayout>
 
@@ -63,7 +64,7 @@
             android:contentDescription="Play or pause"
             android:padding="12dp"
             android:src="@android:drawable/ic_media_play"
-            app:tint="#FFFFFF"/>
+            app:tint="?attr/colorOnPrimaryContainer"/>
 
         <ImageButton
             android:id="@+id/miniPlayerNext"
@@ -73,6 +74,6 @@
             android:contentDescription="Next soundtrack"
             android:padding="12dp"
             android:src="@android:drawable/ic_media_next"
-            app:tint="#FFFFFF"/>
+            app:tint="?attr/colorOnPrimaryContainer"/>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
